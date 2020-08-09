@@ -24,7 +24,7 @@ let syntaxColoring = true;
 // All the voodoo needed to support our fancy code blocks
 function handleCodeBlocks() {
     const toolbarShow = "toolbar-show";
-    const syntaxColoringCookie = "syntax-coloring";
+    const syntaxColoringStorageItem = "syntax-coloring";
     const syntaxColoringItem = "syntax-coloring-item";
 
     // Add a toolbar to all PRE blocks
@@ -207,10 +207,12 @@ function handleCodeBlocks() {
         if (cl !== "") {
             let firstLineOfOutput = 0;
             const lines = code.innerText.split("\n");
+            const heredoc = RegExp(/<<\s*\\?EOF/);
             let cmd = "";
             let escape = false;
             let escapeUntilEOF = false;
             let tmp = "";
+
             for (let j = 0; j < lines.length; j++) {
                 const line = lines[j];
 
@@ -225,14 +227,14 @@ function handleCodeBlocks() {
 
                     tmp = line.slice(2);
 
-                    if (line.includes("<<EOF")) {
+                    if (heredoc.test(line)) {
                         escapeUntilEOF = true;
                     }
                 } else if (escape) {
                     // continuation
                     tmp += "\n" + line;
 
-                    if (line.includes("<<EOF")) {
+                    if (heredoc.test(line)) {
                         escapeUntilEOF = true;
                     }
                 } else if (escapeUntilEOF) {
@@ -259,7 +261,7 @@ function handleCodeBlocks() {
 
             if (cmd !== "") {
                 if (code.dataset.expandlinks === "true") {
-                    cmd = cmd.replace(/@(.*?)@/g, "<a href='https://raw.githubusercontent.com/istio/istio/" + branchName + "/$1'>$1</a>");
+                    cmd = cmd.replace(/@(.*?)@/g, "<a href='https://raw.githubusercontent.com/istio/" + code.dataset.repo + "/" + branchName + "/$1'>$1</a>");
                 }
 
                 let html = "<div class='command'>" + cmd + "</div>";
@@ -343,14 +345,14 @@ function handleCodeBlocks() {
     }
 
     function handleSyntaxColoringOption(): void {
-        const cookieValue = readCookie(syntaxColoringCookie);
-        if (cookieValue === "true") {
+        const setting = readLocalStorage(syntaxColoringStorageItem);
+        if (setting === "true") {
             syntaxColoring = true;
-        } else if (cookieValue === "false") {
+        } else if (setting === "false") {
             syntaxColoring = false;
         }
 
-        const item = document.getElementById(syntaxColoringItem);
+        const item = getById(syntaxColoringItem);
         if (item) {
             if (syntaxColoring) {
                 item.classList.add(active);
@@ -360,7 +362,7 @@ function handleCodeBlocks() {
         }
 
         listen(getById(syntaxColoringItem), click, () => {
-            createCookie(syntaxColoringCookie, syntaxColoring ? "false" : "true");
+            localStorage.setItem(syntaxColoringStorageItem, syntaxColoring ? "false" : "true");
             location.reload();
         });
     }
